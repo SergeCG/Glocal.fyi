@@ -2,3 +2,48 @@
 Zero-grant, zero-slides arbitrage engine – 13 Base mainnet loops, 4.9 s avg, $0.03 gas flat.  
 Audit the CSV in one click: ¢3:  
 https://glocal-fyi.replit.app/api/public/base-ledger.csv
+    [#0] chore: create branch fx-edge-mvp from main
+        AC: branch exists, CI passes, README updated with branch purpose.
+
+DAY 1 (data plumbing, ≤ 8 h)
+2. [#1] feat: add SonyBankFXService scraper (public quotes)
+
+    URL: https://money.sonybank.co.jp/rate/quote.php (no login, GET)
+    Output: {timestamp, ccyPair, bid, ask, source} every 30 s.
+    Store in data/sony_fx.csv (append only).
+
+    [#2] feat: add bitFlyer public ticker adapter
+        End-points: /v1/ticker, /v1/getboard (BTC/JPY, ETH/JPY, USDT/JPY)
+        Infer implied FX = BTC_JPY / BTC_USD (use Binance global BTC-USD as proxy).
+        Store in data/bf_implied_fx.csv.
+    [#3] feat: add JPYTONASwapService (SBI Money Square public page)
+        Scrape 1-day JPY swap mid (no auth).
+        Store in data/jpy_swap.csv.
+
+DAY 2 (core engine, ≤ 10 h)
+5. [#4] feat: implement FX-Edge calculator fxEdge.ts
+
+    Inputs: sony_fx.csv, bf_implied_fx.csv, jpy_swap.csv
+    Compute triangle A→B→C→A for JPY, USD, EUR, TRY, BTC, USDT.
+    Filter: ≥ 8 bps gross after published fee lookup (reuse your fee-registry).
+    Output: {legId, buyVenue, sellVenue, ccyPair, grossBps, netBps, maxClip}
+
+    [#5] feat: synthetic back-tester backtestFxEdge.ts
+        Replay last 60 days of CSV ticks.
+        Simulate immediate hedge via cheapest legal exit (use public fee sheet).
+        Metrics: meanNetBps, Sharpe, maxDrawDownBps, tradeCount.
+        AC: Sharpe ≥ 2, meanNetBps ≥ 5, drawDown ≤ 30 bps.
+
+DAY 3 (integration & risk, ≤ 8 h)
+7. [#6] feat: create internal JPY ledger internalJPY.ts
+
+    Simple in-memory ledger: {free, locked, avgCostBps}
+    API: borrowJPY(amount), repayJPY(amount, costBps)
+    Persist snapshot every 5 min to data/internal_jpy.json.
+
+    [#7] feat: wire FX-Edge into RiskGuard
+        Daily loss limit on FX-Edge trades = $5 (1 % of NAV).
+        30-min stuck-leg kill (same pattern you already use).
+        Export prometheus metrics: fx_edge_net_bps, internal_jpy_cost.
+    [#8] docs: add FX_EDGE_MVP.md
+        Architecture diagram, CSV schema, compliance note (public data only), teardown script.
