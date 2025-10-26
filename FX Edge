@@ -1,7 +1,6 @@
-# Glocal.fyi
-Zero-grant, zero-slides arbitrage engine – 13 Base mainnet loops, 4.9 s avg, $0.03 gas flat.  
-Audit the CSV in one click: ¢3:  
-https://glocal-fyi.replit.app/api/public/base-ledger.csv
+MILESTONE: “FX-Edge MVP” (72 h clock starts on your first commit)
+DAY 0 (setup, ≤ 4 h)
+
     [#0] chore: create branch fx-edge-mvp from main
         AC: branch exists, CI passes, README updated with branch purpose.
 
